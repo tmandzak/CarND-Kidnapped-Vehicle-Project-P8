@@ -45,8 +45,9 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     p.weight = 1.0;
 
     particles.push_back(p);
+    weights.push_back(p.weight);
   }
-
+  
   is_initialized = true;
 }
 
@@ -177,28 +178,38 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       double y_map = observations_map[j].y;
 
       double mu_x, mu_y;
-      for (int k = 0; k < predictions.size(); k++) {
+      bool found = false;
+      
+      int k = 0;
+      while ((k < predictions.size())and(not found))
+      {
         if (predictions[k].id == id_ass) {
           mu_x = predictions[k].x;
           mu_y = predictions[k].y;
+          found = true;
         }
+        k++;
       }
 
-      double sig_x = std_landmark[0];
-      double sig_y = std_landmark[1];
+      if (found){
+        double sig_x = std_landmark[0];
+        double sig_y = std_landmark[1];
 
-      // calculate normalization term
-      double gauss_norm = (1 / (2 * M_PI * sig_x * sig_y));
+        // calculate normalization term
+        double gauss_norm = (1 / (2 * M_PI * sig_x * sig_y));
 
-      // calculate exponent
-      double exponent = (pow(x_map - mu_x, 2) / (2 * pow(sig_x, 2))
-          + (pow(y_map - mu_y, 2) / (2 * pow(sig_y, 2))));
+        // calculate exponent
+        double exponent = (pow(x_map - mu_x, 2) / (2 * pow(sig_x, 2))
+            + (pow(y_map - mu_y, 2) / (2 * pow(sig_y, 2))));
 
-      // calculate weight using normalization terms and exponent
-      double weight = gauss_norm * exp(-exponent);
+        // calculate weight using normalization terms and exponent
+        double weight = gauss_norm * exp(-exponent);
 
-      particles[i].weight *= weight;
+        particles[i].weight *= weight;
+      }
     }
+    
+    weights[i] = particles[i].weight;
   }
 
 }
@@ -209,12 +220,6 @@ void ParticleFilter::resample() {
   //   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
   default_random_engine gen;
-
-  // get weights
-  vector<double> weights;
-  for (int i = 0; i < num_particles; i++) {
-    weights.push_back(particles[i].weight);
-  }
 
   std::discrete_distribution<> d(weights.begin(), weights.end());
   // resample
